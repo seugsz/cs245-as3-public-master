@@ -66,6 +66,7 @@ public class TransactionManager {
         latestValues = sm.readStoredTable();
         this.lm = lm;
         this.sm = sm;
+
         ArrayList<LogRecord> logRecords = new ArrayList<>();
         ArrayList<Long> tags = new ArrayList<>();
         Set<Long> txCommit = new HashSet<>();
@@ -87,8 +88,10 @@ public class TransactionManager {
             if (txCommit.contains(logRecord.getTxID()) && logRecord.getType() == LogRecordType.write) {
                 long tag = tags.get(i);
                 latestValues.put(logRecord.getKey(), new TaggedValue(tag, logRecord.getValue()));
-                sm.queueWrite(logRecord.getKey(), tag, logRecord.getValue());
-                persistent.add(tag);
+                if(!deletedTag.contains(tag)){
+                    sm.queueWrite(logRecord.getKey(), tag, logRecord.getValue());
+                    persistent.add(tag);
+                }
             }
         }
     }
@@ -188,17 +191,19 @@ public class TransactionManager {
         // 如果persistent_tag等于最小的需要持久化的日志对应的数据，就可以作为截断点
         // 堆直接删除非堆顶元素很复杂，所以采用延迟删除，当某个元素需要从堆里删掉时，将其标记
         // 然后直到它是堆顶才删除
-//        long tag = 0;
-//        deletedTag.add(persisted_tag);
-//        while (!persistent.isEmpty() && deletedTag.contains(persistent.peek())) {
-//            tag = persistent.poll();
-//            deletedTag.remove(tag);
-//        }
-//        lm.setLogTruncationOffset((int) tag);
-
-        if(persisted_tag==persistent.peek()){
-            lm.setLogTruncationOffset((int)persisted_tag);
+        long tag = -1;
+        deletedTag.add(persisted_tag);
+        while (!persistent.isEmpty() && deletedTag.contains(persistent.peek())) {
+            tag = persistent.poll();
+            deletedTag.remove(tag);
         }
-        persistent.remove(persisted_tag);
+        if(tag!=-1){
+            lm.setLogTruncationOffset((int) tag);
+        }
+
+//        if(persisted_tag==persistent.peek()){
+//            lm.setLogTruncationOffset((int)persisted_tag);
+//        }
+//        persistent.remove(persisted_tag);
     }
 }
