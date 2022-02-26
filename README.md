@@ -1,3 +1,13 @@
+# 斯坦福cs-245 as3    数据库故障与恢复
+
+源项目链接[https://github.com/stanford-futuredata/cs245-as3-public](https://github.com/stanford-futuredata/cs245-as3-public)
+
+## 设计文档
+
+见 斯坦福cs-245 as3 数据库故障与恢复设计文档
+
+## **测试流程：**
+
 **Replicating gradescope tests locally**
 
 The code can be compiled using Maven; the following command generates a jar file

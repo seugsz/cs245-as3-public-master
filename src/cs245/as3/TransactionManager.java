@@ -87,8 +87,8 @@ public class TransactionManager {
             LogRecord logRecord = logRecords.get(i);
             if (txCommit.contains(logRecord.getTxID()) && logRecord.getType() == LogRecordType.write) {
                 long tag = tags.get(i);
-                latestValues.put(logRecord.getKey(), new TaggedValue(tag, logRecord.getValue()));
                 if(!deletedTag.contains(tag)){
+                    latestValues.put(logRecord.getKey(), new TaggedValue(tag, logRecord.getValue()));
                     sm.queueWrite(logRecord.getKey(), tag, logRecord.getValue());
                     persistent.add(tag);
                 }
@@ -200,10 +200,5 @@ public class TransactionManager {
         if(tag!=-1){
             lm.setLogTruncationOffset((int) tag);
         }
-
-//        if(persisted_tag==persistent.peek()){
-//            lm.setLogTruncationOffset((int)persisted_tag);
-//        }
-//        persistent.remove(persisted_tag);
     }
 }
