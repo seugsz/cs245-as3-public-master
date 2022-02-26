@@ -46,7 +46,7 @@ public class TransactionManager {
     // 需要持久化的写事务对应的logRecord的尾部在logManger的偏移
     private PriorityQueue<Long> persistent;
     // 延迟删除最小堆里的 persistent_tag
-    private Set<Long> deletedTag;
+    private Map<Long,Integer> deletedTag;
 
 
     public TransactionManager() {
@@ -54,7 +54,7 @@ public class TransactionManager {
         latestValues = null;
         logRecordSets = new HashMap<>();
         persistent = new PriorityQueue<Long>();
-        deletedTag = new HashSet<>();
+        deletedTag = new HashMap<>();
     }
 
     /**
@@ -66,6 +66,7 @@ public class TransactionManager {
         latestValues = sm.readStoredTable();
         this.lm = lm;
         this.sm = sm;
+
         ArrayList<LogRecord> logRecords = new ArrayList<>();
         ArrayList<Long> tags = new ArrayList<>();
         Set<Long> txCommit = new HashSet<>();
@@ -188,17 +189,25 @@ public class TransactionManager {
         // 如果persistent_tag等于最小的需要持久化的日志对应的数据，就可以作为截断点
         // 堆直接删除非堆顶元素很复杂，所以采用延迟删除，当某个元素需要从堆里删掉时，将其标记
         // 然后直到它是堆顶才删除
-//        long tag = 0;
-//        deletedTag.add(persisted_tag);
-//        while (!persistent.isEmpty() && deletedTag.contains(persistent.peek())) {
-//            tag = persistent.poll();
-//            deletedTag.remove(tag);
-//        }
-//        lm.setLogTruncationOffset((int) tag);
-
-        if(persisted_tag==persistent.peek()){
-            lm.setLogTruncationOffset((int)persisted_tag);
+        long tag = -1;
+        deletedTag.put(persisted_tag,deletedTag.getOrDefault(persisted_tag,0)+1);
+        while (!persistent.isEmpty() && deletedTag.containsKey(persistent.peek())) {
+            tag = persistent.poll();
+            int temp=deletedTag.get(tag)-1;
+            if(temp!=0){
+                deletedTag.put(tag,temp);
+            }else{
+                deletedTag.remove(tag);
+            }
         }
-        persistent.remove(persisted_tag);
+        if(tag!=-1){
+            lm.setLogTruncationOffset((int) tag);
+        }
+
+
+//        if(persisted_tag==persistent.peek()){
+//            lm.setLogTruncationOffset((int)persisted_tag);
+//        }
+//        persistent.remove(persisted_tag);
     }
 }
